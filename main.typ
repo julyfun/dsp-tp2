@@ -29,7 +29,68 @@
 
 #outline()
 
-= Analysis
+= Algorithm design process
+In this part, we mainly introduce the process of how we design our algorithm one step by one step. This means that we will firstly design the algorithm in the simplest way, and then we will improve it step by step. The characteristic frequency of the fault will gradually become clear during this process.
+
+== Preparation
+=== Import the Data
+We take the data from the file `100.csv` as an example.
+#figure(image("./pics/100csv_time.png", width: 100%), numbering: none)
+
+It can be found that in the original time domain signal, there are many frequency signals mixed. In particular, many high-frequency signals make the picture look cluttered. It's hard to tell us anything useful with the naked eye.
+=== Define the Faults
+With information in the slides, we know that there exists four kinds of potential faults in the data:
+$
+"BPFO" = n * "fr" / 2 * (1 - d / D * cos A) \
+"BPFI" = n * "fr" / 2 * (1 + d / D * cos A) \
+"BSF" = "fr" / 2 * D / d * (1 - (d / D * cos A)^2) \
+"FTF" = "fr" / 2 * (1 - d / D * cos A)
+$
+with all values of variables $n$, $d$, $D$, $A$ and $"fr"$ are given. For data of `100.csv`, they are:
+#figure(
+  table(
+    columns: 5,
+    [Fault], [BPFO], [BPFI], [BSF], [FTF],
+    [Fre], [107.9], [172.1], [45.4], [13.5],
+  ),
+  caption: [Frequence of faults],
+)
+== Perform FFT
+We do FFT directly on the original signal to get the distribution of each frequency in the signal. The result is shown in the figure below:
+#figure(image("./pics/FFT_out.png", width: 100%), numbering: none)
+
+The four red dashed lines in the figure are the four possible failures that we calculated earlier. In this figure, we find that there seems to be no corresponding failure frequency in the graph. Does this mean that our bearings do not have a fault code? We are skeptical.
+== Carry Out envelope analysis
+Mechanical failure often leads to shock vibration in mechanical systems. These shock vibrations usually appear as a series of short-time pulses in the vibration signal with a large amplitude but a short duration.
+
+These pulses excite the natural vibrations of the mechanical system, forming a series of amplitude-modulated oscillations. That is, the vibration signal consists of the product of a carrier (the natural frequency of the system) and a modulated signal (the shock pulse train). (Content of TP 2024.5.13)
+
+Through envelope analysis, we can extract the envelope of the modulated signal from the modulated vibration signal, that is, those impulse sequences. The following figure shows the envelope of the modulated signal:
+#figure(image("./pics/env_out_whole.png", width: 100%), numbering: none)
+Because of the high frequency of the signal, it is difficult for us to analyze the useful results. Let's take a relatively short time domain:
+#figure(image("./pics/env_out_part.png", width: 100%), numbering: none)
+There are roughly three steps to calculate the envelope signal, which will not be detailed here.
+
+We found that the envelope analysis appears to filter out some of the high-frequency noise, making our low-frequency features more pronounced.
+
+At this step, we may be able to diagnose FTF type faults.
+#figure(image("./pics/env_psd_out.png", width: 100%), numbering: none)
+
+== Carry Out Spectral Kurtosis Analysis
+In order to better detect, we carry out spectral warping analysis. 
+
+Spectral kurtosis is able to enhance transient components because transient components typically have larger fourth-order cumulants, while noise and other background components have smaller fourth-order cumulants.And we also know that fault signals are usually transient signals. By calculating the fourth-order cumulant distribution over the frequency domain, the optimal band-pass frequency range can be determined automatically, and the energy of the transient components can be extracted effectively.
+
+#figure(image("./pics/k.png", width: 100%), numbering: none)
+
+In the above figure, we give the spectral kurtosis image and the envelope signal after filtering with a bandpass filter.
+
+After this processing, we calculate its power spectral density and get:
+#figure(image("./pics/100csv_res.png", width: 100%), numbering: none)
+
+Therefore, we preliminarily determine that its fault type is FTF.
+
+= Cases Analysis
 
 == `100.csv`
 
